@@ -14,6 +14,7 @@ export default function EditTime() {
     targetTime: null,
     isTimerRunning: false,
     configuredSeconds: 24 * 3600,
+    isCompleted: false,
     lastUpdated: Date.now()
   });
 
@@ -37,6 +38,14 @@ export default function EditTime() {
     const now = Date.now();
     let remainingSec = currState.configuredSeconds || 24 * 3600;
 
+    if (currState.isCompleted) {
+      setPreviewText("00:00:00");
+      setStatusLabel("MEGATHON ENDED");
+      setStatusClass("bg-pink-500/30 text-pink-300 border-pink-400");
+      setToggleBtnText("RESTART COUNTDOWN");
+      return;
+    }
+
     if (currState.isTimerRunning && currState.targetTime) {
       const diffMs = currState.targetTime - now;
       if (diffMs > 0) {
@@ -46,8 +55,8 @@ export default function EditTime() {
         setToggleBtnText("PAUSE COUNTDOWN");
       } else {
         remainingSec = 0;
-        setStatusLabel("MEGATHON LIVE");
-        setStatusClass("bg-purple-500/20 text-purple-300 border-purple-400");
+        setStatusLabel("MEGATHON ENDED");
+        setStatusClass("bg-pink-500/30 text-pink-300 border-pink-400");
         setToggleBtnText("START COUNTDOWN");
       }
     } else {
@@ -111,6 +120,7 @@ export default function EditTime() {
       ...state,
       action: 'edit',
       configuredSeconds: totalSec,
+      isCompleted: false,
       targetTime: state.isTimerRunning ? Date.now() + totalSec * 1000 : state.targetTime
     };
 
@@ -137,6 +147,7 @@ export default function EditTime() {
         action: 'pause',
         configuredSeconds: Math.floor(remainingMs / 1000),
         isTimerRunning: false,
+        isCompleted: false,
         targetTime: null
       };
     } else {
@@ -145,6 +156,7 @@ export default function EditTime() {
         action: 'start',
         configuredSeconds: totalSec,
         isTimerRunning: true,
+        isCompleted: false,
         targetTime: Date.now() + totalSec * 1000
       };
     }
@@ -159,6 +171,7 @@ export default function EditTime() {
       action: 'reset',
       targetTime: null,
       isTimerRunning: false,
+      isCompleted: false,
       configuredSeconds: 24 * 3600
     };
     saveStateToStorage(newState);

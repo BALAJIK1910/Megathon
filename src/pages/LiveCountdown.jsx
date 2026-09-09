@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import BackgroundCanvas from '../components/BackgroundCanvas';
 import LaunchSequence from '../components/LaunchSequence';
 import CountdownDisplay from '../components/CountdownDisplay';
@@ -85,7 +85,7 @@ export default function LiveCountdown() {
     }, 4000);
   };
 
-  // Sync state from storage helper (handles incoming events from other laptops)
+  // Sync state from storage/WebSocket/Cloud (handles incoming events from other laptops)
   const syncFromState = (state) => {
     if (!state) return;
 
@@ -101,6 +101,14 @@ export default function LiveCountdown() {
       }
     }
 
+    if (state.isCompleted) {
+      setIsRunning(false);
+      setTargetTime(null);
+      setIsCompleted(true);
+      updateDigitsFromTotalSec(0);
+      return;
+    }
+
     if (state.isTimerRunning && state.targetTime) {
       const remainingMs = state.targetTime - Date.now();
       if (remainingMs > 0) {
@@ -111,6 +119,7 @@ export default function LiveCountdown() {
         setIsRunning(false);
         setTargetTime(null);
         setIsCompleted(true);
+        updateDigitsFromTotalSec(0);
       }
     } else {
       setIsRunning(false);
@@ -132,25 +141,33 @@ export default function LiveCountdown() {
     return () => unsubscribe();
   }, []);
 
-  // Countdown tick interval
+  // High-precision countdown tick interval (100ms) with ZERO timing lag
   useEffect(() => {
     if (!isRunning || !targetTime) return;
 
-    const interval = setInterval(() => {
-      const remainingMs = Math.max(0, targetTime - Date.now());
-      const totalSec = Math.floor(remainingMs / 1000);
-
-      updateDigitsFromTotalSec(totalSec);
+    const tick = () => {
+      const remainingMs = targetTime - Date.now();
 
       if (remainingMs <= 0) {
         setIsRunning(false);
         setTargetTime(null);
         setIsCompleted(true);
+        updateDigitsFromTotalSec(0);
         audio.playBurst();
-        saveStateToStorage({ isTimerRunning: false, targetTime: null, configuredSeconds });
-        clearInterval(interval);
+        saveStateToStorage({
+          isTimerRunning: false,
+          targetTime: null,
+          configuredSeconds,
+          isCompleted: true
+        });
+      } else {
+        const totalSec = Math.floor(remainingMs / 1000);
+        updateDigitsFromTotalSec(totalSec);
       }
-    }, 1000);
+    };
+
+    tick();
+    const interval = setInterval(tick, 100);
 
     return () => clearInterval(interval);
   }, [isRunning, targetTime, configuredSeconds]);
@@ -160,13 +177,16 @@ export default function LiveCountdown() {
     const seqStart = Date.now();
     const newTarget = seqStart + 4000 + configuredSeconds * 1000;
 
+    setIsCompleted(false);
+
     // Broadcast launch sequence to all laptops
     saveStateToStorage({
       action: 'sequence',
       sequenceStartTime: seqStart,
       isTimerRunning: true,
       targetTime: newTarget,
-      configuredSeconds
+      configuredSeconds,
+      isCompleted: false
     });
 
     triggerSequenceAnimationLocally(seqStart);
@@ -183,18 +203,21 @@ export default function LiveCountdown() {
       action: 'reset',
       isTimerRunning: false,
       targetTime: null,
-      configuredSeconds
+      configuredSeconds,
+      isCompleted: false
     });
   };
 
   const handleApplyEdit = (newSec) => {
     setConfiguredSeconds(newSec);
+    setIsCompleted(false);
     const newTarget = isRunning ? Date.now() + newSec * 1000 : null;
     saveStateToStorage({
       action: 'edit',
       configuredSeconds: newSec,
       isTimerRunning: isRunning,
-      targetTime: newTarget
+      targetTime: newTarget,
+      isCompleted: false
     });
   };
 
@@ -215,7 +238,7 @@ export default function LiveCountdown() {
       </div>
 
       <div class="relative z-20 w-full min-h-screen flex flex-col justify-between px-6 py-6 md:px-10 lg:px-12 md:py-8">
-        <Header onOpenEdit={() => setIsEditModalOpen(true)} />
+        <Header showAdminControls={false} />
 
         <main class="w-full max-w-6xl mx-auto my-auto flex flex-col items-center justify-center text-center py-6">
           <div class="flex items-center space-x-3 mb-2">
@@ -241,12 +264,19 @@ export default function LiveCountdown() {
             <CountdownDisplay hours={displayHours} minutes={displayMinutes} seconds={displaySeconds} />
           )}
 
+          {/* MEGATHON ENDED SCREEN (ZERO TIMING LAG) */}
           {isCompleted && (
-            <div class="my-8 p-6 poster-glass rounded-2xl max-w-2xl border-2 border-pink-400 animate-bounce">
-              <h2 class="font-orbitron font-black text-3xl md:text-5xl text-pink-300 text-glow-magenta mb-2">
+            <div class="my-8 p-8 poster-glass rounded-3xl max-w-3xl border-2 border-pink-400 shadow-[0_0_50px_rgba(236,72,153,0.5)] animate-bounce text-center relative overflow-hidden">
+              <div class="tech-corner-tl"></div><div class="tech-corner-tr"></div>
+              <div class="tech-corner-bl"></div><div class="tech-corner-br"></div>
+              <div class="flex items-center justify-center space-x-3 mb-2">
+                <span class="w-3 h-3 rounded-full bg-pink-500 animate-ping"></span>
+                <span class="font-mono text-xs text-pink-400 tracking-[0.3em] font-bold uppercase">TIME EXPIRED</span>
+              </div>
+              <h2 class="font-orbitron font-black text-4xl sm:text-5xl md:text-6xl text-pink-300 text-glow-magenta mb-3 tracking-wider">
                 MEGATHON HAS ENDED!
               </h2>
-              <p class="font-mono text-sm text-purple-200 tracking-wider">
+              <p class="font-mono text-sm md:text-base text-purple-200 tracking-widest font-semibold max-w-xl mx-auto">
                 THANK YOU FOR JOINING THE 24-HOUR HACKATHON ARENA. SEE YOU NEXT TIME!
               </p>
             </div>
