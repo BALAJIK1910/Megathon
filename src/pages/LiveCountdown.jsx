@@ -170,9 +170,9 @@ export default function LiveCountdown() {
         </div>
       </div>
 
-      <div class="relative z-20 w-full min-h-screen flex flex-col justify-between px-4 py-6 md:px-8 md:py-8 max-w-7xl mx-auto">
-        {/* CLEAN HEADER */}
-        <header class="w-full flex flex-col md:flex-row items-center justify-between border-b border-purple-500/30 pb-4 gap-4">
+      <div class="relative z-20 w-full min-h-screen flex flex-col justify-between px-6 py-6 md:px-10 lg:px-12 md:py-8">
+        {/* CLEAN HEADER: Edge-to-edge fitting full screen width */}
+        <header class="w-full flex flex-row items-center justify-between border-b border-purple-500/30 pb-4 gap-4">
           <div class="flex items-center space-x-4">
             <div class="flex flex-col text-left">
               <div class="flex items-center space-x-2">
@@ -185,11 +185,11 @@ export default function LiveCountdown() {
           </div>
 
           <div class="flex items-center space-x-4">
-            <img src="/dres.jpeg" alt="Drestein Logo" class="h-14 md:h-16 object-contain filter drop-shadow-[0_0_15px_rgba(168,85,247,0.6)]" />
+            <img src="/dres.png" alt="DRESTEIN '26 Logo" class="h-10 sm:h-12 md:h-14 lg:h-16 object-contain filter drop-shadow-[0_0_20px_rgba(168,85,247,0.7)]" />
           </div>
         </header>
 
-        <main class="w-full my-auto flex flex-col items-center justify-center text-center py-6">
+        <main class="w-full max-w-6xl mx-auto my-auto flex flex-col items-center justify-center text-center py-6">
           <div class="flex items-center space-x-3 mb-2">
             <span class="h-[1px] w-8 md:w-16 bg-gradient-to-r from-transparent to-pink-500" />
             <span class="font-mono text-xs md:text-sm tracking-[0.35em] text-pink-300 uppercase font-semibold">

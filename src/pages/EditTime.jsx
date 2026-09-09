@@ -164,7 +164,7 @@ export default function EditTime() {
 
       <div class="relative z-20 w-full max-w-3xl flex flex-col items-center my-auto">
         <header class="w-full flex flex-col items-center mb-8 text-center">
-          <img src="/dres.jpeg" alt="Drestein Logo" class="h-20 md:h-24 object-contain mb-4 filter drop-shadow-[0_0_20px_rgba(168,85,247,0.5)]" />
+          <img src="/dres.png" alt="DRESTEIN '26 Logo" class="h-16 md:h-20 object-contain mb-4 filter drop-shadow-[0_0_20px_rgba(168,85,247,0.6)]" />
           <div class="flex items-center space-x-2 mb-1">
             <span class="w-2.5 h-2.5 rounded-full bg-purple-400 animate-ping" />
             <span class="font-mono text-xs text-purple-300 tracking-[0.25em] uppercase font-bold">ADMIN CONTROL PANEL // /EDITTIME</span>
