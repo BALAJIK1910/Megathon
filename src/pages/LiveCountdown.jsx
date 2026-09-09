@@ -162,6 +162,7 @@ export default function LiveCountdown() {
       setIsRunning(false);
       setTargetTime(null);
       setIsCompleted(false);
+      setShowQrCode(false);
       updateDigitsFromTotalSec(state.configuredSeconds || 24 * 3600);
     }
   };
@@ -305,7 +306,7 @@ export default function LiveCountdown() {
           )}
 
           {/* PROBLEM STATEMENT GITHUB REPO QR CODE CARD (Revealed upon Buzzer Launch) */}
-          {showQrCode && !isCompleted && bombStage === 0 && (
+          {showQrCode && isRunning && !isCompleted && bombStage === 0 && (
             <div className="mt-8 w-full max-w-2xl poster-glass p-6 md:p-8 rounded-3xl border-2 border-purple-500/50 hover:border-pink-400 shadow-[0_0_40px_rgba(168,85,247,0.3)] transition-all relative overflow-hidden animate-fadeIn">
               <div className="tech-corner-tl"></div><div className="tech-corner-tr"></div>
               <div className="tech-corner-bl"></div><div className="tech-corner-br"></div>

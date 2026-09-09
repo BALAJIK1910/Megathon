@@ -141,9 +141,9 @@ function processInboundUpdate(rawState, sourceName = 'Firebase') {
   if (!rawState || typeof rawState !== 'object') return;
   const sanitized = sanitizeTimerPayload(rawState);
 
-  // If we already have a newer state in memory, don't revert
+  // If we already have a state in memory, check if incoming is actually newer
   if (lastKnownState && typeof lastKnownState.lastUpdated === 'number') {
-    if (sanitized.lastUpdated < lastKnownState.lastUpdated) {
+    if (sanitized.lastUpdated <= lastKnownState.lastUpdated) {
       return;
     }
   }

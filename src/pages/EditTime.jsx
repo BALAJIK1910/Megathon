@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import BackgroundCanvas from '../components/BackgroundCanvas';
@@ -35,6 +35,7 @@ export default function EditTime() {
   const [toastMsg, setToastMsg] = useState("");
   const [buzzerPressed, setBuzzerPressed] = useState(false);
   const [isSavingDb, setIsSavingDb] = useState(false);
+  const initialSyncDone = useRef(false);
 
   const [syncStatus, setSyncStatus] = useState({
     isConnected: false,
@@ -61,9 +62,21 @@ export default function EditTime() {
     if (!currState) return;
     setState(currState);
 
-    if (currState.githubRepoUrl) {
-      setGithubRepoUrl(currState.githubRepoUrl);
+    // Only populate input form controls on the initial load so the user can type freely
+    if (!initialSyncDone.current) {
+      initialSyncDone.current = true;
+      if (currState.githubRepoUrl) {
+        setGithubRepoUrl(currState.githubRepoUrl);
+      }
+      const now = getServerTime();
+      const currentSec = currState.isTimerRunning && currState.targetTime && currState.targetTime > 0
+        ? Math.max(0, Math.floor((currState.targetTime - now) / 1000))
+        : (currState.configuredSeconds || 24 * 3600);
+      setHours(Math.floor(currentSec / 3600));
+      setMinutes(Math.floor((currentSec % 3600) / 60));
+      setSeconds(currentSec % 60);
     }
+
     if (typeof currState.showQrCode === 'boolean') {
       setShowQrCode(currState.showQrCode);
     }
@@ -100,14 +113,6 @@ export default function EditTime() {
   useEffect(() => {
     const unsubscribeState = subscribeToStateChanges((newState) => {
       updateViewFromState(newState);
-      // Sync the H/M/S inputs to the current timer value
-      const now = getServerTime();
-      const currentSec = newState.isTimerRunning && newState.targetTime && newState.targetTime > 0
-        ? Math.max(0, Math.floor((newState.targetTime - now) / 1000))
-        : (newState.configuredSeconds || 24 * 3600);
-      setHours(Math.floor(currentSec / 3600));
-      setMinutes(Math.floor((currentSec % 3600) / 60));
-      setSeconds(currentSec % 60);
     });
 
     const unsubscribeStatus = subscribeToSyncStatus((status) => {
@@ -120,15 +125,26 @@ export default function EditTime() {
     };
   }, []);
 
-  // Update preview ticker (live countdown display on admin page)
+  // Update preview ticker ONLY for live countdown clock display (NEVER touches user input fields)
   useEffect(() => {
     const interval = setInterval(() => {
       if (state.isTimerRunning && state.targetTime && state.targetTime > 0) {
-        updateViewFromState(state);
+        const now = getServerTime();
+        const diffMs = state.targetTime - now;
+        if (diffMs > 0) {
+          const remainingSec = Math.floor(diffMs / 1000);
+          setPreviewText(formatTime(remainingSec));
+          setStatusLabel("COUNTDOWN RUNNING");
+          setStatusClass("bg-emerald-500/20 text-emerald-300 border-emerald-400");
+        } else {
+          setPreviewText("00:00:00");
+          setStatusLabel("MEGATHON CONCLUDED");
+          setStatusClass("bg-pink-500/30 text-pink-300 border-pink-400");
+        }
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [state]);
+  }, [state.isTimerRunning, state.targetTime]);
 
   // Safe wrapper for all database writes with visual feedback
   const executeDbWrite = async (payload, successMsg) => {
@@ -241,9 +257,9 @@ export default function EditTime() {
     const newState = {
       ...state,
       githubRepoUrl: cleanUrl,
-      showQrCode: true
+      showQrCode: state.isTimerRunning ? Boolean(state.showQrCode) : false
     };
-    await executeDbWrite(newState, "GitHub Repo URL saved & QR code updated on all screens!");
+    await executeDbWrite(newState, "GitHub Repo link saved & synced with database! (QR will appear on screens when buzzer is triggered)");
   };
 
   const handleToggleQrCode = async () => {
@@ -291,10 +307,11 @@ export default function EditTime() {
   };
 
   const handleReset = async () => {
-    if (!window.confirm("ARE YOU SURE? This will reset the countdown back to 24:00:00 on all 4 areas!")) {
+    if (!window.confirm("ARE YOU SURE? This will reset the countdown back to 24:00:00 on all 4 areas! (Repo link will be preserved)")) {
       return;
     }
     audio.playClick();
+    const preservedRepo = githubRepoUrl.trim() || state.githubRepoUrl || 'https://github.com/balajik1910';
     const newState = {
       action: 'reset',
       targetTime: 0,
@@ -303,12 +320,18 @@ export default function EditTime() {
       isCompleted: false,
       configuredSeconds: 24 * 3600,
       showQrCode: false,
-      githubRepoUrl: githubRepoUrl.trim() || 'https://github.com/balajik1910'
+      githubRepoUrl: preservedRepo
     };
+    // ONLY TIME CHANGES!
     setHours(24);
     setMinutes(0);
     setSeconds(0);
-    await executeDbWrite(newState, "Reset protocol applied! Database & screens reset to 24:00:00.");
+    // Preserved: githubRepoUrl is kept intact!
+    setShowQrCode(false);
+    setPreviewText("24:00:00");
+    setStatusLabel("STANDBY / PAUSED");
+    setStatusClass("bg-amber-500/20 text-amber-300 border-amber-400");
+    await executeDbWrite(newState, "Countdown reset to 24:00:00! (GitHub Repo link preserved)");
   };
 
   return (
@@ -495,20 +518,13 @@ export default function EditTime() {
                   disabled={isSavingDb}
                   className="py-2.5 px-5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-orbitron font-bold text-xs tracking-wider rounded-xl transition-all shadow-[0_0_15px_rgba(236,72,153,0.4)] cursor-pointer"
                 >
-                  SAVE & SYNC QR
+                  SAVE LINK & SYNC TO DB
                 </button>
               </form>
 
-              <div className="mt-3 flex items-center justify-between">
-                <label className="flex items-center space-x-2 text-xs font-mono text-purple-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showQrCode}
-                    onChange={handleToggleQrCode}
-                    className="rounded border-purple-500 text-pink-500 focus:ring-pink-400"
-                  />
-                  <span>Show QR code on stage screens right now</span>
-                </label>
+              <div className="mt-3 flex items-center space-x-2 text-xs font-mono text-purple-300/80">
+                <span className="w-2 h-2 rounded-full bg-pink-400" />
+                <span>Note: QR code stays hidden on viewer screens until the Buzzer is triggered.</span>
               </div>
             </div>
           </div>
