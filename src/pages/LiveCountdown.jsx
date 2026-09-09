@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import BackgroundCanvas from '../components/BackgroundCanvas';
 import LaunchSequence from '../components/LaunchSequence';
 import CountdownDisplay from '../components/CountdownDisplay';
+import Header from '../components/Header';
 import Footer from '../components/Footer';
+import EditTimeModal from '../components/EditTimeModal';
 import { audio } from '../utils/audio';
 import { saveStateToStorage, loadStateFromStorage, subscribeToStateChanges } from '../utils/storage';
 
 export default function LiveCountdown() {
+  const navigate = useNavigate();
   const [configuredSeconds, setConfiguredSeconds] = useState(24 * 3600);
   const [targetTime, setTargetTime] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -24,6 +27,9 @@ export default function LiveCountdown() {
   const [seqNumber, setSeqNumber] = useState("3");
   const [flashActive, setFlashActive] = useState(false);
   const [shakeClass, setShakeClass] = useState("");
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const lastSeqTimestamp = useRef(null);
 
   const updateDigitsFromTotalSec = (totalSec) => {
     const h = Math.floor(totalSec / 3600);
@@ -34,70 +40,10 @@ export default function LiveCountdown() {
     setDisplaySeconds(s);
   };
 
-  // Sync state from storage helper
-  const syncFromState = (state) => {
-    if (!state) return;
+  const triggerSequenceAnimationLocally = (sequenceStartTime) => {
+    if (lastSeqTimestamp.current === sequenceStartTime) return;
+    lastSeqTimestamp.current = sequenceStartTime;
 
-    if (typeof state.configuredSeconds === 'number' && state.configuredSeconds > 0) {
-      setConfiguredSeconds(state.configuredSeconds);
-    }
-
-    if (state.isTimerRunning && state.targetTime) {
-      const remainingMs = state.targetTime - Date.now();
-      if (remainingMs > 0) {
-        setTargetTime(state.targetTime);
-        setIsRunning(true);
-        setIsCompleted(false);
-      } else {
-        setIsRunning(false);
-        setTargetTime(null);
-        setIsCompleted(true);
-      }
-    } else {
-      setIsRunning(false);
-      setTargetTime(null);
-      setIsCompleted(false);
-      updateDigitsFromTotalSec(state.configuredSeconds || 24 * 3600);
-    }
-  };
-
-  // Initial load & subscribe to live state changes from /edittime
-  useEffect(() => {
-    const initialState = loadStateFromStorage();
-    syncFromState(initialState);
-
-    const unsubscribe = subscribeToStateChanges((newState) => {
-      syncFromState(newState);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  // Countdown tick interval
-  useEffect(() => {
-    if (!isRunning || !targetTime) return;
-
-    const interval = setInterval(() => {
-      const remainingMs = Math.max(0, targetTime - Date.now());
-      const totalSec = Math.floor(remainingMs / 1000);
-
-      updateDigitsFromTotalSec(totalSec);
-
-      if (remainingMs <= 0) {
-        setIsRunning(false);
-        setTargetTime(null);
-        setIsCompleted(true);
-        audio.playBurst();
-        saveStateToStorage({ isTimerRunning: false, targetTime: null, configuredSeconds });
-        clearInterval(interval);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isRunning, targetTime, configuredSeconds]);
-
-  // Start sequence
-  const handleStartSequence = () => {
     audio.init();
     audio.playClick();
 
@@ -136,12 +82,94 @@ export default function LiveCountdown() {
 
     setTimeout(() => {
       setBombStage(0);
-      const newTarget = Date.now() + configuredSeconds * 1000;
-      setTargetTime(newTarget);
-      setIsRunning(true);
-      setIsCompleted(false);
-      saveStateToStorage({ isTimerRunning: true, targetTime: newTarget, configuredSeconds });
     }, 4000);
+  };
+
+  // Sync state from storage helper (handles incoming events from other laptops)
+  const syncFromState = (state) => {
+    if (!state) return;
+
+    if (typeof state.configuredSeconds === 'number' && state.configuredSeconds > 0) {
+      setConfiguredSeconds(state.configuredSeconds);
+    }
+
+    // Check for incoming launch sequence trigger
+    if (state.action === 'sequence' && state.sequenceStartTime) {
+      const elapsed = Date.now() - state.sequenceStartTime;
+      if (elapsed >= 0 && elapsed < 4500) {
+        triggerSequenceAnimationLocally(state.sequenceStartTime);
+      }
+    }
+
+    if (state.isTimerRunning && state.targetTime) {
+      const remainingMs = state.targetTime - Date.now();
+      if (remainingMs > 0) {
+        setTargetTime(state.targetTime);
+        setIsRunning(true);
+        setIsCompleted(false);
+      } else {
+        setIsRunning(false);
+        setTargetTime(null);
+        setIsCompleted(true);
+      }
+    } else {
+      setIsRunning(false);
+      setTargetTime(null);
+      setIsCompleted(false);
+      updateDigitsFromTotalSec(state.configuredSeconds || 24 * 3600);
+    }
+  };
+
+  // Initial load & subscribe to live state changes from all laptops
+  useEffect(() => {
+    const initialState = loadStateFromStorage();
+    syncFromState(initialState);
+
+    const unsubscribe = subscribeToStateChanges((newState) => {
+      syncFromState(newState);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Countdown tick interval
+  useEffect(() => {
+    if (!isRunning || !targetTime) return;
+
+    const interval = setInterval(() => {
+      const remainingMs = Math.max(0, targetTime - Date.now());
+      const totalSec = Math.floor(remainingMs / 1000);
+
+      updateDigitsFromTotalSec(totalSec);
+
+      if (remainingMs <= 0) {
+        setIsRunning(false);
+        setTargetTime(null);
+        setIsCompleted(true);
+        audio.playBurst();
+        saveStateToStorage({ isTimerRunning: false, targetTime: null, configuredSeconds });
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isRunning, targetTime, configuredSeconds]);
+
+  // Start sequence broadcast
+  const handleStartSequence = () => {
+    const seqStart = Date.now();
+    const newTarget = seqStart + 4000 + configuredSeconds * 1000;
+
+    // Broadcast launch sequence to all laptops
+    saveStateToStorage({
+      action: 'sequence',
+      sequenceStartTime: seqStart,
+      isTimerRunning: true,
+      targetTime: newTarget,
+      configuredSeconds
+    });
+
+    triggerSequenceAnimationLocally(seqStart);
   };
 
   const handleReset = () => {
@@ -151,7 +179,23 @@ export default function LiveCountdown() {
     setBombStage(0);
     setIsCompleted(false);
     updateDigitsFromTotalSec(configuredSeconds);
-    saveStateToStorage({ isTimerRunning: false, targetTime: null, configuredSeconds });
+    saveStateToStorage({
+      action: 'reset',
+      isTimerRunning: false,
+      targetTime: null,
+      configuredSeconds
+    });
+  };
+
+  const handleApplyEdit = (newSec) => {
+    setConfiguredSeconds(newSec);
+    const newTarget = isRunning ? Date.now() + newSec * 1000 : null;
+    saveStateToStorage({
+      action: 'edit',
+      configuredSeconds: newSec,
+      isTimerRunning: isRunning,
+      targetTime: newTarget
+    });
   };
 
   return (
@@ -171,23 +215,7 @@ export default function LiveCountdown() {
       </div>
 
       <div class="relative z-20 w-full min-h-screen flex flex-col justify-between px-6 py-6 md:px-10 lg:px-12 md:py-8">
-        {/* CLEAN HEADER: Edge-to-edge fitting full screen width */}
-        <header class="w-full flex flex-row items-center justify-between border-b border-purple-500/30 pb-4 gap-4">
-          <div class="flex items-center space-x-4">
-            <div class="flex flex-col text-left">
-              <div class="flex items-center space-x-2">
-                <span class="font-orbitron font-extrabold text-lg md:text-xl text-white tracking-widest">SAVEETHA</span>
-                <span class="bg-pink-600 text-white text-[10px] font-bold px-2 py-0.5 rounded tracking-wider uppercase">AUTONOMOUS</span>
-              </div>
-              <span class="font-rajdhani font-semibold text-xs text-purple-300 tracking-wider">ENGINEERING COLLEGE // AFFILIATED TO ANNA UNIVERSITY</span>
-              <span class="font-mono text-[10px] text-pink-400 font-bold mt-0.5">25 YEARS OF EXCELLENCE</span>
-            </div>
-          </div>
-
-          <div class="flex items-center space-x-4">
-            <img src="/dres.png" alt="DRESTEIN '26 Logo" class="h-10 sm:h-12 md:h-14 lg:h-16 object-contain filter drop-shadow-[0_0_20px_rgba(168,85,247,0.7)]" />
-          </div>
-        </header>
+        <Header onOpenEdit={() => setIsEditModalOpen(true)} />
 
         <main class="w-full max-w-6xl mx-auto my-auto flex flex-col items-center justify-center text-center py-6">
           <div class="flex items-center space-x-3 mb-2">
@@ -228,8 +256,9 @@ export default function LiveCountdown() {
             <button
               onClick={handleStartSequence}
               disabled={isRunning || bombStage > 0}
-              class={`group relative px-10 py-4 bg-gradient-to-r from-purple-600/30 to-pink-600/30 hover:from-purple-600/50 hover:to-pink-600/50 text-white font-orbitron font-bold text-sm md:text-base tracking-[0.25em] rounded-xl border border-purple-400/60 hover:border-pink-400 transition-all duration-300 shadow-[0_0_25px_rgba(168,85,247,0.3)] hover:shadow-[0_0_40px_rgba(236,72,153,0.7)] active:scale-95 cursor-pointer ${isRunning || bombStage > 0 ? 'opacity-70 cursor-not-allowed' : ''
-                }`}
+              class={`group relative px-10 py-4 bg-gradient-to-r from-purple-600/30 to-pink-600/30 hover:from-purple-600/50 hover:to-pink-600/50 text-white font-orbitron font-bold text-sm md:text-base tracking-[0.25em] rounded-xl border border-purple-400/60 hover:border-pink-400 transition-all duration-300 shadow-[0_0_25px_rgba(168,85,247,0.3)] hover:shadow-[0_0_40px_rgba(236,72,153,0.7)] active:scale-95 cursor-pointer ${
+                isRunning || bombStage > 0 ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
             >
               <div class="tech-corner-tl"></div><div class="tech-corner-tr"></div>
               <div class="tech-corner-bl"></div><div class="tech-corner-br"></div>
@@ -250,11 +279,25 @@ export default function LiveCountdown() {
                 RESET PROTOCOL
               </button>
             )}
+
+            <button
+              onClick={() => navigate('/edittime')}
+              class="px-6 py-3.5 poster-glass rounded-xl font-mono text-xs text-pink-300 hover:text-white transition-colors border border-purple-500/40 hover:border-pink-400 cursor-pointer"
+            >
+              FULL CONTROL PANEL &rarr;
+            </button>
           </div>
         </main>
 
         <Footer />
       </div>
+
+      <EditTimeModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onApply={handleApplyEdit}
+        currentSec={configuredSeconds}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import BackgroundCanvas from '../components/BackgroundCanvas';
+import Header from '../components/Header';
 import { audio } from '../utils/audio';
 import { saveStateToStorage, loadStateFromStorage, subscribeToStateChanges } from '../utils/storage';
 
@@ -20,6 +21,7 @@ export default function EditTime() {
   const [statusLabel, setStatusLabel] = useState("INITIALIZING");
   const [statusClass, setStatusClass] = useState("bg-purple-500/20 text-purple-300 border-purple-400");
   const [toggleBtnText, setToggleBtnText] = useState("START COUNTDOWN");
+  const [toastMsg, setToastMsg] = useState("");
 
   const formatTime = (totalSec) => {
     const h = Math.floor(totalSec / 3600);
@@ -90,6 +92,11 @@ export default function EditTime() {
     setSeconds(s);
   };
 
+  const showToast = (msg) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(""), 3500);
+  };
+
   const handleApply = (e) => {
     e.preventDefault();
     audio.playClick();
@@ -102,13 +109,14 @@ export default function EditTime() {
 
     const newState = {
       ...state,
+      action: 'edit',
       configuredSeconds: totalSec,
       targetTime: state.isTimerRunning ? Date.now() + totalSec * 1000 : state.targetTime
     };
 
     saveStateToStorage(newState);
     updateViewFromState(newState);
-    alert(`Timer updated to ${formatTime(totalSec)}! Live countdown page synced.`);
+    showToast(`Timer updated to ${formatTime(totalSec)}! Synced to all connected laptops.`);
   };
 
   const handleStartPauseToggle = () => {
@@ -126,6 +134,7 @@ export default function EditTime() {
       // Pause
       const remainingMs = currentSt.targetTime ? Math.max(0, currentSt.targetTime - Date.now()) : 0;
       newState = {
+        action: 'pause',
         configuredSeconds: Math.floor(remainingMs / 1000),
         isTimerRunning: false,
         targetTime: null
@@ -133,6 +142,7 @@ export default function EditTime() {
     } else {
       // Start
       newState = {
+        action: 'start',
         configuredSeconds: totalSec,
         isTimerRunning: true,
         targetTime: Date.now() + totalSec * 1000
@@ -146,6 +156,7 @@ export default function EditTime() {
   const handleReset = () => {
     audio.playClick();
     const newState = {
+      action: 'reset',
       targetTime: null,
       isTimerRunning: false,
       configuredSeconds: 24 * 3600
@@ -155,6 +166,7 @@ export default function EditTime() {
     setMinutes(0);
     setSeconds(0);
     updateViewFromState(newState);
+    showToast('Reset protocol applied! All laptops set to 24 hours.');
   };
 
   return (
@@ -162,17 +174,24 @@ export default function EditTime() {
       <BackgroundCanvas />
       <div class="fixed inset-0 scanlines z-10" />
 
-      <div class="relative z-20 w-full max-w-3xl flex flex-col items-center my-auto">
-        <header class="w-full flex flex-col items-center mb-8 text-center">
-          <img src="/dres.png" alt="DRESTEIN '26 Logo" class="h-16 md:h-20 object-contain mb-4 filter drop-shadow-[0_0_20px_rgba(168,85,247,0.6)]" />
-          <div class="flex items-center space-x-2 mb-1">
+      <div class="relative z-20 w-full max-w-4xl flex flex-col items-center my-auto">
+        <Header showAdminControls={true} />
+
+        <div class="w-full text-center my-6">
+          <div class="inline-flex items-center space-x-2 mb-1">
             <span class="w-2.5 h-2.5 rounded-full bg-purple-400 animate-ping" />
             <span class="font-mono text-xs text-purple-300 tracking-[0.25em] uppercase font-bold">ADMIN CONTROL PANEL // /EDITTIME</span>
           </div>
           <h1 class="font-orbitron font-black text-2xl sm:text-4xl text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-pink-500 tracking-wider">
             MEGATHON '26 TIMER EDITOR
           </h1>
-        </header>
+        </div>
+
+        {toastMsg && (
+          <div class="w-full max-w-3xl mb-4 p-3 rounded-xl bg-purple-950/90 border border-pink-400 text-pink-300 font-mono text-xs font-bold text-center animate-bounce shadow-[0_0_20px_rgba(236,72,153,0.3)]">
+            {toastMsg}
+          </div>
+        )}
 
         {/* STATUS CARD */}
         <div class="w-full poster-glass rounded-2xl p-6 mb-6 relative">
@@ -197,7 +216,7 @@ export default function EditTime() {
           </div>
 
           <p class="font-mono text-xs text-purple-300/80 text-center sm:text-left font-semibold">
-            * Changes saved here instantly update the live countdown page (/) across all windows and tabs!
+            * Changes saved here instantly update the live countdown page (/) across all logged-in laptops in real-time!
           </p>
         </div>
 
