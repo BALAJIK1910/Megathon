@@ -157,7 +157,7 @@ export default function LiveCountdown() {
   return (
     <div class={`relative min-h-screen w-full flex flex-col justify-between items-center overflow-hidden font-sans antialiased ${shakeClass}`}>
       <BackgroundCanvas />
-      
+
       <div class="fixed inset-0 scanlines z-10" />
       <div class={`flash-overlay ${flashActive ? 'flash-active' : ''}`} />
 
@@ -216,21 +216,20 @@ export default function LiveCountdown() {
           {isCompleted && (
             <div class="my-8 p-6 poster-glass rounded-2xl max-w-2xl border-2 border-pink-400 animate-bounce">
               <h2 class="font-orbitron font-black text-3xl md:text-5xl text-pink-300 text-glow-magenta mb-2">
-                MEGATHON HAS BEGUN!
+                MEGATHON HAS ENDED!
               </h2>
               <p class="font-mono text-sm text-purple-200 tracking-wider">
-                WELCOME TO THE 24-HOUR HACKATHON ARENA. HACK ON!
+                THANK YOU FOR JOINING THE 24-HOUR HACKATHON ARENA. SEE YOU NEXT TIME!
               </p>
             </div>
           )}
 
           <div class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4 z-30">
-            <button 
+            <button
               onClick={handleStartSequence}
               disabled={isRunning || bombStage > 0}
-              class={`group relative px-10 py-4 bg-gradient-to-r from-purple-600/30 to-pink-600/30 hover:from-purple-600/50 hover:to-pink-600/50 text-white font-orbitron font-bold text-sm md:text-base tracking-[0.25em] rounded-xl border border-purple-400/60 hover:border-pink-400 transition-all duration-300 shadow-[0_0_25px_rgba(168,85,247,0.3)] hover:shadow-[0_0_40px_rgba(236,72,153,0.7)] active:scale-95 cursor-pointer ${
-                isRunning || bombStage > 0 ? 'opacity-70 cursor-not-allowed' : ''
-              }`}
+              class={`group relative px-10 py-4 bg-gradient-to-r from-purple-600/30 to-pink-600/30 hover:from-purple-600/50 hover:to-pink-600/50 text-white font-orbitron font-bold text-sm md:text-base tracking-[0.25em] rounded-xl border border-purple-400/60 hover:border-pink-400 transition-all duration-300 shadow-[0_0_25px_rgba(168,85,247,0.3)] hover:shadow-[0_0_40px_rgba(236,72,153,0.7)] active:scale-95 cursor-pointer ${isRunning || bombStage > 0 ? 'opacity-70 cursor-not-allowed' : ''
+                }`}
             >
               <div class="tech-corner-tl"></div><div class="tech-corner-tr"></div>
               <div class="tech-corner-bl"></div><div class="tech-corner-br"></div>
@@ -244,7 +243,7 @@ export default function LiveCountdown() {
             </button>
 
             {(isRunning || isCompleted) && (
-              <button 
+              <button
                 onClick={handleReset}
                 class="px-6 py-3.5 poster-glass rounded-xl font-mono text-xs text-purple-300 hover:text-pink-300 transition-colors border border-purple-700 hover:border-pink-500/50 cursor-pointer"
               >
