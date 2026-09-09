@@ -21,6 +21,8 @@ let currentTimerState = {
   targetTime: null,
   isTimerRunning: false,
   bombStage: 0,
+  githubRepoUrl: 'https://github.com/balajik1910',
+  showQrCode: false,
   lastUpdated: Date.now()
 };
 

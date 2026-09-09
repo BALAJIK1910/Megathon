@@ -17,11 +17,15 @@ export default function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
+          {/* Public Stage Display for 4 Area Projectors / Screens */}
+          <Route path="/" element={<LiveCountdown />} />
+          
+          {/* Admin & Judge Control Deck */}
           <Route
-            path="/"
+            path="/admin"
             element={
               <ProtectedRoute>
-                <LiveCountdown />
+                <EditTime />
               </ProtectedRoute>
             }
           />
@@ -33,6 +37,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
           {/* Catch-all redirect */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

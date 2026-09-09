@@ -1,29 +1,15 @@
-import {
-  saveLocalState,
-  getLocalState,
-  subscribeToSync,
-  subscribeToSyncStatus,
-  broadcastTimerState,
-  initSyncEngine,
-  STORAGE_KEY,
-  CHANNEL_NAME
-} from './syncEngine';
+// storage.js — thin shim that re-exports syncEngine public API
+// All actual sync logic lives in syncEngine.js
 
 export {
+  initSyncEngine,
+  saveStateToStorage,
+  loadStateFromStorage,
+  subscribeToStateChanges,
+  subscribeToSyncStatus,
+  getServerTime,
+  isAdminAuthorized,
+  sanitizeTimerPayload,
   STORAGE_KEY,
   CHANNEL_NAME,
-  initSyncEngine,
-  subscribeToSyncStatus
-};
-
-export function saveStateToStorage(state) {
-  broadcastTimerState(state);
-}
-
-export function loadStateFromStorage() {
-  return getLocalState();
-}
-
-export function subscribeToStateChanges(callback) {
-  return subscribeToSync(callback);
-}
+} from './syncEngine';

@@ -1,0 +1,8 @@
+{
+  "rules": {
+    "timer": {
+      ".read": true,
+      ".write": "newData.hasChildren(['action', 'isTimerRunning', 'configuredSeconds', 'isCompleted', 'lastUpdated', 'showQrCode', 'updatedBy']) && newData.child('updatedBy').val() === 'admin'"
+    }
+  }
+}
