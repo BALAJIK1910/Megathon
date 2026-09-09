@@ -176,7 +176,7 @@ export default function EditTime() {
 
     const totalSec = state.configuredSeconds || (hours * 3600 + minutes * 60 + seconds) || 24 * 3600;
     const seqStart = getServerTime();
-    const newTarget = seqStart + 4000 + totalSec * 1000;
+    const newTarget = seqStart + 11200 + totalSec * 1000;
 
     const newState = {
       action: 'sequence',
@@ -189,7 +189,7 @@ export default function EditTime() {
       githubRepoUrl: githubRepoUrl.trim() || 'https://github.com/balajik1910'
     };
 
-    await executeDbWrite(newState, "BUZZER ACTIVATED! Database updated & broadcasted to all area screens!");
+    await executeDbWrite(newState, "BUZZER ACTIVATED! 10-Second Countdown & QR Code broadcasted to all area screens!");
   };
 
   const handlePreset = (h, m, s) => {
@@ -397,6 +397,31 @@ export default function EditTime() {
           </div>
         )}
 
+        {/* Dedicated Mobile Judge Buzzer Quick-Launch Banner */}
+        <div className="w-full max-w-4xl mb-6">
+          <Link
+            to="/admin/buzzer"
+            className="w-full p-4 rounded-2xl bg-gradient-to-r from-pink-600/30 via-purple-600/30 to-indigo-600/30 hover:from-pink-600/40 hover:to-purple-600/40 border-2 border-pink-500/60 hover:border-pink-400 flex items-center justify-between transition-all shadow-[0_0_30px_rgba(236,72,153,0.3)] group cursor-pointer"
+          >
+            <div className="flex items-center space-x-3 text-left">
+              <span className="w-10 h-10 rounded-xl bg-pink-500/20 border border-pink-400/40 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                📱
+              </span>
+              <div>
+                <span className="font-orbitron font-bold text-sm text-white tracking-wider block">
+                  OPEN DEDICATED JUDGE BUZZER (MOBILE VIEW)
+                </span>
+                <span className="font-mono text-xs text-purple-300/80">
+                  Minimalist, full-screen mobile view with header & launch buzzer only.
+                </span>
+              </div>
+            </div>
+            <span className="font-orbitron font-bold text-xs text-pink-400 group-hover:text-white group-hover:translate-x-1 transition-all">
+              OPEN BUZZER &rarr;
+            </span>
+          </Link>
+        </div>
+
         {/* ==================================================== */}
         {/* JUDGE MOBILE BUZZER HERO SECTION (RESPONSIVE FOR PHONE) */}
         {/* ==================================================== */}
@@ -412,7 +437,7 @@ export default function EditTime() {
           </h2>
 
           <p className="font-mono text-xs text-purple-200 max-w-md mb-6">
-            Pressing this buzzer launches the 3-2-1 cinematic audio explosion, starts the 24-hr clock, and reveals the Problem Statement QR Code across all 4 area screens!
+            Pressing this buzzer launches the 10-second cinematic launch countdown, starts the 24-hr clock, and reveals the Problem Statement QR Code across all 4 area screens!
           </p>
 
           {/* Glowing 3D Buzzer Button */}
@@ -445,7 +470,7 @@ export default function EditTime() {
               </span>
               {state.isTimerRunning && (
                 <span className="font-mono text-[10px] text-pink-200 tracking-wider mt-1 uppercase">
-                  (3-2-1 Sequence)
+                  (10-Sec Launch Countdown)
                 </span>
               )}
             </button>

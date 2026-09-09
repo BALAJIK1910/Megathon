@@ -1,130 +1,88 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 
-export default function LaunchSequence({ bombStage, fuseBurnProgress, seqNumber }) {
-  const canvasRef = useRef(null);
-  const fuseSparksRef = useRef([]);
+export default function LaunchSequence({ isActive, count, progress = 1 }) {
+  if (!isActive) return null;
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    let animId;
-
-    const renderBomb = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (bombStage === 0) return;
-
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height / 2 + 10;
-      const radius = 45;
-
-      const shadowGrad = ctx.createRadialGradient(centerX, centerY + 50, 5, centerX, centerY + 50, 60);
-      shadowGrad.addColorStop(0, 'rgba(236, 72, 153, 0.4)');
-      shadowGrad.addColorStop(1, 'transparent');
-      ctx.fillStyle = shadowGrad;
-      ctx.fillRect(centerX - 60, centerY + 20, 120, 40);
-
-      const bombGrad = ctx.createRadialGradient(
-        centerX - 15, centerY - 15, 5,
-        centerX, centerY, radius
-      );
-      bombGrad.addColorStop(0, '#4c1d95');
-      bombGrad.addColorStop(0.4, '#2e1065');
-      bombGrad.addColorStop(0.8, '#1e1b4b');
-      bombGrad.addColorStop(1, '#0c051d');
-
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-      ctx.fillStyle = bombGrad;
-      ctx.shadowBlur = 25;
-      ctx.shadowColor = bombStage >= 1 ? '#ec4899' : 'rgba(0,0,0,0.8)';
-      ctx.fill();
-      ctx.shadowBlur = 0;
-
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, radius, Math.PI * 0.7, Math.PI * 1.3);
-      ctx.strokeStyle = 'rgba(236, 72, 153, 0.6)';
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
-
-      ctx.fillStyle = '#6b21a8';
-      ctx.fillRect(centerX - 10, centerY - radius - 6, 20, 8);
-      ctx.strokeStyle = '#a855f7';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(centerX - 10, centerY - radius - 6, 20, 8);
-
-      const capX = centerX;
-      const capY = centerY - radius - 6;
-      const fuseMaxLen = 45;
-      const fuseCurrentLen = fuseMaxLen * (1 - fuseBurnProgress);
-      const tipX = capX + Math.sin(fuseBurnProgress * 2) * 20 + 20;
-      const tipY = capY - fuseCurrentLen;
-
-      ctx.beginPath();
-      ctx.moveTo(capX, capY);
-      ctx.quadraticCurveTo(capX + 15, capY - 20, tipX, tipY);
-      ctx.strokeStyle = '#9a3412';
-      ctx.lineWidth = 4;
-      ctx.stroke();
-
-      if (fuseBurnProgress < 1.0) {
-        const sparkGrad = ctx.createRadialGradient(tipX, tipY, 1, tipX, tipY, 15);
-        sparkGrad.addColorStop(0, '#ffffff');
-        sparkGrad.addColorStop(0.3, '#ec4899');
-        sparkGrad.addColorStop(0.7, '#a855f7');
-        sparkGrad.addColorStop(1, 'transparent');
-
-        ctx.fillStyle = sparkGrad;
-        ctx.beginPath();
-        ctx.arc(tipX, tipY, 16, 0, Math.PI * 2);
-        ctx.fill();
-
-        if (Math.random() < 0.7) {
-          fuseSparksRef.current.push({
-            x: tipX,
-            y: tipY,
-            vx: (Math.random() - 0.5) * 4,
-            vy: (Math.random() - 0.5) * 4 - 1,
-            life: 1.0,
-            color: Math.random() > 0.4 ? '#ec4899' : '#a855f7'
-          });
-        }
-      }
-
-      for (let i = fuseSparksRef.current.length - 1; i >= 0; i--) {
-        const s = fuseSparksRef.current[i];
-        s.x += s.vx;
-        s.y += s.vy;
-        s.life -= 0.05;
-        if (s.life <= 0) { fuseSparksRef.current.splice(i, 1); continue; }
-
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, Math.random() * 2 + 1, 0, Math.PI * 2);
-        ctx.fillStyle = s.color;
-        ctx.globalAlpha = s.life;
-        ctx.shadowBlur = 6;
-        ctx.shadowColor = s.color;
-        ctx.fill();
-        ctx.globalAlpha = 1.0;
-        ctx.shadowBlur = 0;
-      }
-
-      animId = requestAnimationFrame(renderBomb);
-    };
-
-    renderBomb();
-
-    return () => cancelAnimationFrame(animId);
-  }, [bombStage, fuseBurnProgress]);
-
-  if (bombStage === 0) return null;
+  const isGo = count === 'GO' || count === 0;
+  // Circular gauge math for r=110 (perimeter = 2 * PI * 110 ≈ 691.15)
+  const radius = 110;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference * (1 - Math.max(0, Math.min(1, progress)));
 
   return (
-    <div class="relative w-full max-w-lg h-72 flex flex-col items-center justify-center my-4">
-      <canvas ref={canvasRef} width="400" height="300" class="absolute inset-0 mx-auto z-10 pointer-events-none" />
-      <div class="relative z-20 flex items-center justify-center mt-28">
-        <span class="font-orbitron font-black text-7xl md:text-8xl text-transparent bg-clip-text bg-gradient-to-b from-pink-200 to-purple-500 drop-shadow-[0_0_40px_rgba(236,72,153,0.9)] animate-pulse">
-          {seqNumber}
+    <div className="relative w-full max-w-lg my-6 flex flex-col items-center justify-center select-none animate-fadeIn">
+      {/* Outer Pulse Glow Aura */}
+      <div className={`absolute -inset-4 rounded-full blur-3xl opacity-60 pointer-events-none transition-all duration-300 ${
+        isGo ? 'bg-emerald-500 animate-pulse' : 'bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 animate-pulse'
+      }`} />
+
+      {/* Cyber Circular Progress HUD */}
+      <div className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center">
+        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 260 260">
+          {/* Background Track */}
+          <circle
+            cx="130"
+            cy="130"
+            r={radius}
+            stroke="rgba(168, 85, 247, 0.2)"
+            strokeWidth="8"
+            fill="transparent"
+          />
+          {/* Outer Dashed Orbit Ring */}
+          <circle
+            cx="130"
+            cy="130"
+            r={radius + 12}
+            stroke="rgba(236, 72, 153, 0.3)"
+            strokeWidth="1.5"
+            strokeDasharray="6 6"
+            fill="transparent"
+            className="animate-spin-slow"
+          />
+          {/* Active Depleting Progress Ring */}
+          <circle
+            cx="130"
+            cy="130"
+            r={radius}
+            stroke={isGo ? '#34d399' : '#ec4899'}
+            strokeWidth="10"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            fill="transparent"
+            style={{ transition: 'stroke-dashoffset 0.9s linear, stroke 0.3s' }}
+            filter="drop-shadow(0 0 12px rgba(236, 72, 153, 0.8))"
+          />
+        </svg>
+
+        {/* Center Countdown Number */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+          <span className="font-mono text-[10px] sm:text-xs text-purple-300 tracking-[0.3em] uppercase mb-1 font-bold">
+            {isGo ? 'SYSTEM LAUNCHED' : 'T-MINUS'}
+          </span>
+
+          <span
+            key={count}
+            className={`font-orbitron font-black tracking-wider leading-none transition-transform animate-scaleIn ${
+              isGo
+                ? 'text-5xl sm:text-6xl text-emerald-300 drop-shadow-[0_0_35px_rgba(52,211,153,0.9)]'
+                : 'text-7xl sm:text-8xl text-transparent bg-clip-text bg-gradient-to-b from-white via-pink-200 to-purple-400 drop-shadow-[0_0_40px_rgba(236,72,153,0.9)]'
+            }`}
+          >
+            {count}
+          </span>
+
+          <span className="font-mono text-[10px] sm:text-xs text-pink-300/80 tracking-widest uppercase mt-2 font-semibold">
+            {isGo ? 'ALL SYSTEMS ACTIVE' : 'SECONDS TO LAUNCH'}
+          </span>
+        </div>
+      </div>
+
+      {/* Futuristic Status Bar Below Gauge */}
+      <div className="mt-4 px-4 py-1.5 rounded-full poster-glass border border-purple-500/40 text-xs font-mono flex items-center space-x-2">
+        <span className={`w-2 h-2 rounded-full ${isGo ? 'bg-emerald-400 animate-ping' : 'bg-pink-400 animate-pulse'}`} />
+        <span className="text-purple-200 font-bold tracking-widest uppercase">
+          {isGo ? 'HACKATHON IS NOW LIVE!' : 'ARENA LAUNCH COUNTDOWN IN PROGRESS'}
         </span>
       </div>
     </div>

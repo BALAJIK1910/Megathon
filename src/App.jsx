@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LiveCountdown from './pages/LiveCountdown';
 import EditTime from './pages/EditTime';
+import JudgeBuzzer from './pages/JudgeBuzzer';
 import Login from './pages/Login';
 import { initSyncEngine } from './utils/storage';
 
@@ -20,7 +21,25 @@ export default function App() {
           {/* Public Stage Display for 4 Area Projectors / Screens */}
           <Route path="/" element={<LiveCountdown />} />
           
-          {/* Admin & Judge Control Deck */}
+          {/* Dedicated VIP Judge Buzzer Mobile View */}
+          <Route
+            path="/buzzer"
+            element={
+              <ProtectedRoute>
+                <JudgeBuzzer />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/buzzer"
+            element={
+              <ProtectedRoute>
+                <JudgeBuzzer />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Admin Master Control Deck */}
           <Route
             path="/admin"
             element={

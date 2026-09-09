@@ -22,10 +22,10 @@ export default function LiveCountdown() {
   const [displayMinutes, setDisplayMinutes] = useState(0);
   const [displaySeconds, setDisplaySeconds] = useState(0);
 
-  // Cinematic Sequence
-  const [bombStage, setBombStage] = useState(0);
-  const [fuseProgress, setFuseProgress] = useState(0);
-  const [seqNumber, setSeqNumber] = useState("3");
+  // 10-Second Cinematic Launch Sequence State
+  const [isSequenceActive, setIsSequenceActive] = useState(false);
+  const [countdownValue, setCountdownValue] = useState(10);
+  const [countdownProgress, setCountdownProgress] = useState(1.0);
   const [flashActive, setFlashActive] = useState(false);
   const [shakeClass, setShakeClass] = useState("");
 
@@ -62,50 +62,52 @@ export default function LiveCountdown() {
     }
   };
 
+  // 10-Second Launch Sequence
   const triggerSequenceAnimationLocally = (sequenceStartTime) => {
     if (lastSeqTimestamp.current === sequenceStartTime) return;
     lastSeqTimestamp.current = sequenceStartTime;
 
     audio.init();
     audio.playClick();
+    setIsSequenceActive(true);
 
-    setBombStage(3);
-    setFuseProgress(0.1);
-    setSeqNumber("3");
-    setShakeClass("");
-    audio.playBeep(520, 0.2);
+    // 10-second countdown steps: 10 down to 1
+    for (let i = 10; i >= 1; i--) {
+      const delay = (10 - i) * 1000;
+      setTimeout(() => {
+        setCountdownValue(i);
+        setCountdownProgress(i / 10);
 
+        // Pitch rises progressively from 440Hz up to 850Hz as seconds tick
+        const freq = 440 + (10 - i) * 45;
+        audio.playBeep(freq, 0.2);
+
+        // Subtle shake build-up on the final 3 seconds
+        if (i <= 3) {
+          setShakeClass(i === 1 ? 'shake-intense' : 'shake-mild');
+        } else {
+          setShakeClass('');
+        }
+      }, delay);
+    }
+
+    // At 10 seconds: "GO!" + audio burst + screen flash
     setTimeout(() => {
-      setBombStage(2);
-      setFuseProgress(0.45);
-      setSeqNumber("2");
-      setShakeClass("shake-mild");
-      audio.playBeep(650, 0.2);
-    }, 1000);
-
-    setTimeout(() => {
-      setBombStage(1);
-      setFuseProgress(0.85);
-      setSeqNumber("1");
-      setShakeClass("shake-intense");
-      audio.playBeep(850, 0.25);
-    }, 2000);
-
-    setTimeout(() => {
-      setBombStage(4);
-      setFuseProgress(1.0);
-      setSeqNumber("GO");
-      setShakeClass("");
+      setCountdownValue('GO');
+      setCountdownProgress(0);
+      setShakeClass('');
       setFlashActive(true);
       audio.playBurst();
 
-      setTimeout(() => setFlashActive(false), 600);
-    }, 3000);
+      setTimeout(() => setFlashActive(false), 800);
+    }, 10000);
 
+    // At 11.2 seconds: Sequence ends, countdown starts, QR code is revealed
     setTimeout(() => {
-      setBombStage(0);
+      setIsSequenceActive(false);
       setShowQrCode(true);
-    }, 4000);
+      setIsRunning(true);
+    }, 11200);
   };
 
   // Sync state from Firebase Realtime Database
@@ -120,11 +122,7 @@ export default function LiveCountdown() {
       setGithubRepoUrl(state.githubRepoUrl);
     }
 
-    if (typeof state.showQrCode === 'boolean') {
-      setShowQrCode(state.showQrCode);
-    }
-
-    // Check for incoming launch sequence trigger (robust against device clock drift)
+    // Check for incoming launch sequence trigger
     if (state.action === 'sequence' && state.sequenceStartTime && state.sequenceStartTime > 0) {
       const now = getServerTime();
       const elapsed = now - state.sequenceStartTime;
@@ -148,8 +146,7 @@ export default function LiveCountdown() {
         setTargetTime(state.targetTime);
         setIsRunning(true);
         setIsCompleted(false);
-        // Ensure QR code is visible when timer is active
-        if (state.showQrCode !== false) {
+        if (state.showQrCode !== false && !isSequenceActive) {
           setShowQrCode(true);
         }
       } else {
@@ -173,7 +170,6 @@ export default function LiveCountdown() {
       syncFromState(newState);
     });
 
-    // Keep screen awake for 24-hour presentation
     let wakeLock = null;
     const requestWakeLock = async () => {
       try {
@@ -181,7 +177,7 @@ export default function LiveCountdown() {
           wakeLock = await navigator.wakeLock.request('screen');
         }
       } catch {
-        // Wake lock optional fallback
+        /* ignore */
       }
     };
     requestWakeLock();
@@ -193,7 +189,6 @@ export default function LiveCountdown() {
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Auto unlock audio on any first user click anywhere on screen
     const handleFirstClick = () => {
       unlockAudio();
       requestWakeLock();
@@ -211,7 +206,7 @@ export default function LiveCountdown() {
     };
   }, []);
 
-  // High-precision countdown tick interval with ZERO drift using server-synchronized time
+  // High-precision countdown tick interval with ZERO drift
   useEffect(() => {
     if (!isRunning || !targetTime) return;
 
@@ -282,10 +277,18 @@ export default function LiveCountdown() {
 
             {/* Live Arena Status Pill */}
             <div className="mt-3 flex items-center space-x-2 px-4 py-1 rounded-full poster-glass border border-purple-500/30 text-xs font-mono">
-              <span className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-400 animate-ping' : bombStage > 0 ? 'bg-pink-400 animate-bounce' : isCompleted ? 'bg-red-400' : 'bg-amber-400 animate-pulse'}`} />
+              <span className={`w-2 h-2 rounded-full ${
+                isSequenceActive
+                  ? 'bg-pink-400 animate-bounce'
+                  : isRunning
+                  ? 'bg-green-400 animate-ping'
+                  : isCompleted
+                  ? 'bg-red-400'
+                  : 'bg-amber-400 animate-pulse'
+              }`} />
               <span className="tracking-widest uppercase font-bold text-purple-200">
-                {bombStage > 0
-                  ? 'LAUNCH SEQUENCE INITIATED BY JUDGE'
+                {isSequenceActive
+                  ? '10-SECOND LAUNCH SEQUENCE INITIATED BY JUDGE'
                   : isRunning
                   ? 'HACKATHON IN PROGRESS • ROUND 1'
                   : isCompleted
@@ -295,18 +298,22 @@ export default function LiveCountdown() {
             </div>
           </div>
 
-          {/* 3-2-1 Launch Sequence */}
-          <LaunchSequence bombStage={bombStage} fuseBurnProgress={fuseProgress} seqNumber={seqNumber} />
+          {/* 10-Second Cinematic Launch Sequence HUD */}
+          <LaunchSequence
+            isActive={isSequenceActive}
+            count={countdownValue}
+            progress={countdownProgress}
+          />
 
           {/* Countdown Clock Display */}
-          {bombStage === 0 && !isCompleted && (
+          {!isSequenceActive && !isCompleted && (
             <div className="w-full flex flex-col items-center">
               <CountdownDisplay hours={displayHours} minutes={displayMinutes} seconds={displaySeconds} />
             </div>
           )}
 
           {/* PROBLEM STATEMENT GITHUB REPO QR CODE CARD (Revealed upon Buzzer Launch) */}
-          {showQrCode && isRunning && !isCompleted && bombStage === 0 && (
+          {showQrCode && isRunning && !isCompleted && !isSequenceActive && (
             <div className="mt-8 w-full max-w-2xl poster-glass p-6 md:p-8 rounded-3xl border-2 border-purple-500/50 hover:border-pink-400 shadow-[0_0_40px_rgba(168,85,247,0.3)] transition-all relative overflow-hidden animate-fadeIn">
               <div className="tech-corner-tl"></div><div className="tech-corner-tr"></div>
               <div className="tech-corner-bl"></div><div className="tech-corner-br"></div>

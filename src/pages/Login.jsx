@@ -69,12 +69,12 @@ export default function Login() {
 
       <div class="relative z-20 w-full max-w-md my-auto flex flex-col items-center">
         {/* Institutional & Event Branding */}
-        <header class="w-full flex flex-col items-center mb-6 text-center">
-          <div class="flex items-center space-x-3 mb-2">
-            <span class="font-orbitron font-extrabold text-sm md:text-base text-white tracking-widest">SAVEETHA</span>
-            <span class="bg-pink-600 text-white text-[10px] font-bold px-2 py-0.5 rounded tracking-wider uppercase">AUTONOMOUS</span>
-          </div>
-          <p class="font-rajdhani font-semibold text-xs text-purple-300 tracking-wider">ENGINEERING COLLEGE // AFFILIATED TO ANNA UNIVERSITY</p>
+        <header className="w-full flex flex-col items-center mb-6 text-center">
+          <img
+            src="/logo.png"
+            alt="Saveetha Autonomous Engineering College Logo"
+            className="h-12 sm:h-14 w-auto object-contain mb-2 filter drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]"
+          />
 
           <img src="/dres.png" alt="DRESTEIN '26 Logo" class="h-16 md:h-20 object-contain my-3 filter drop-shadow-[0_0_20px_rgba(168,85,247,0.7)]" />
 
